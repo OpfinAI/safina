@@ -1,0 +1,205 @@
+\documentclass[twocolumn]{article}
+\usepackage{graphicx} % Required for inserting images
+\usepackage[margin=2cm]{geometry}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{url}
+\captionsetup[table]{labelfont=bf, textfont=bf}
+
+\begin{document}
+\title{\textbf{Safina: Modifying Penman–Monteith for Drip Irrigation}}
+\author{\textbf{Conner Davidson} \\ Sentrifuge Inc. \\ Washington, D.C., USA \\ cdavidson@sentrifuge.com \and \textbf{Nandish Gupta} \\ GreedyAI Laboratories \\ Centreville, VA, USA \\ nandish.gupta@greedy-ai.com \and \textbf{Patrick Learn} \\ GreedyAI Laboratories \\ Ebensburg, PA, USA \\ patrick.learn@greedy-ai.com}
+\date{April 22nd, 2025}
+\maketitle
+\section{Abstract}
+We present a method to estimate water consumption for an intercrop of \textit{cash crops}, \textit{Moringa oleifera}, and corn using a modified crop evapotranspiration (ET\textsubscript{c}) model tailored for drip irrigation. Traditional ET models, such as the FAO-56 Penman–Monteith equation, assume full surface wetting and are poorly suited to systems where water is applied directly to the root zone. Our approach introduces a wetted area correction factor and applies crop-specific coefficients to adjust reference ET values to reflect localized irrigation conditions. We implemented this model in a C program that reads hourly weather data, calculates ET\textsubscript{0}, and outputs daily crop-specific water requirements per hectare. This method supports accurate irrigation planning in stratified intercrop systems, and is designed to inform the capacity and scheduling of Safina’s purified water generation infrastructure for year-round use in Zanzibar’s tropical climate.
+
+\section{Introduction}
+
+Efficient water management is essential in agriculture, particularly in regions where water is scarce or must be generated through energy-intensive purification systems. This is especially true for drip irrigation systems, where water is delivered precisely to the root zones of plants, allowing for significant reductions in evaporation losses and surface runoff. However, standard evapotranspiration (ET) models—such as the widely used Penman–Monteith equation—assume a uniformly vegetated and fully wetted surface\cite{allen1998}, making them poorly suited for estimating water demand in drip-irrigated fields.
+
+In this study, we present a method for adapting the Penman–Monteith model to reflect the spatial constraints of drip irrigation, specifically within an intercrop configuration consisting of \textit{cash crops}, \textit{Moringa oleifera}, and corn (\textit{Zea mays}). Accurate estimation of irrigation needs in this context is critical, as these values will inform the design and operational capacity of Safina’s purified water generation systems, which must be capable of meeting peak agricultural demand year-round in a tropical climate like Zanzibar’s.
+
+Our approach modifies conventional ET\textsubscript{c} calculations by applying crop-specific coefficients and a wetted area correction factor, producing a realistic and system-relevant estimate of water consumption per hectare.
+
+\section{Methodology}
+We estimate actual crop evapotranspiration by modifying the reference ET using crop-specific coefficients and a wetted area factor appropriate for drip irrigation systems.
+
+\subsection{Penman--Monteith Equation}
+
+The Penman--Monteith equation, as standardized in FAO Irrigation and Drainage Paper No. 56 (FAO-56), is the recommended method for estimating reference evapotranspiration (ET\textsubscript{0}) using meteorological data. It assumes a hypothetical reference crop consisting of well-watered grass with full ground cover and no water stress.
+
+The FAO-56 version of the equation is:
+
+\[
+ET_0 = \frac{0.408 \Delta (R_n - G) + \gamma \frac{900}{T + 273} u_2 (e_s - e_a)}{\Delta + \gamma (1 + 0.34 u_2)}
+\]
+
+The meaning and units of each variable are provided in Table~\ref{tab:et-vars}.
+
+\begin{table}[h]
+\centering
+\caption{Variables and units in the FAO-56 Penman--Monteith equation}
+\label{tab:et-vars}
+\begin{tabular}{@{} l l l @{}}
+\toprule
+\textbf{Symbol} & \textbf{Description} & \textbf{Units} \\
+\midrule
+$ET_0$ & Reference evapotranspiration & mm/day \\
+$R_n$  & Net radiation & MJ/m\textsuperscript{2}/day \\
+$G$    & Soil heat flux & MJ/m\textsuperscript{2}/day \\
+$T$    & Air temperature at 2 m & °C \\
+$u_2$  & Wind speed at 2 m & m/s \\
+$e_s$  & Saturation vapor pressure & kPa \\
+$e_a$  & Actual vapor pressure & kPa \\
+$\Delta$ & Slope of vapor pressure curve & kPa/°C \\
+$\gamma$ & Psychrometric constant & kPa/°C \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+FAO-56 also outlines standardized procedures for calculating these variables from daily weather data. Although the Penman--Monteith model provides a robust estimate of atmospheric demand, it assumes uniform surface wetting, making it unsuitable for direct application to drip irrigation systems. In this study, ET\textsubscript{0} serves as a baseline, which we adjust using crop-specific coefficients and a wetted area factor to reflect localized irrigation conditions more accurately.
+
+\subsection{Intercrop Configuration}
+
+The modeled intercrop system consists of 1600 \textit{Moringa oleifera} trees, 800 \textit{cash crops}, and 18,750 corn (\textit{Zea mays}) plants, all distributed across a one-hectare plot. Moringa trees are spaced in a 2.5-meter square grid, providing a loosely structured overstory. Cash crops are interspersed among the Moringa, occupying the mid-canopy layer, while corn is planted in 20 inter-row spaces with 20cm spacing, forming the understory.
+
+Each crop is irrigated using dedicated drip emitters, and planting density has been optimized for vertical stratification and efficient root zone targeting. Given Zanzibar’s tropical climate, all crops are expected to follow continuous growth and harvest cycles throughout the year, allowing for sustained productivity and consistent water demand modeling.
+
+\subsection{Crop Coefficient Estimation}
+
+To estimate actual crop evapotranspiration (ET\textsubscript{c}), we applied peak crop coefficients (K\textsubscript{c}) representative of mid-season conditions. These values are based on literature and agronomic analogs for each species\cite{moringa2017}\cite{maize2023}, as shown in Table~\ref{tab:kc-values}.
+
+\begin{table}[h]
+\centering
+\caption{Crop K\textsubscript{c} values}
+\label{tab:kc-values}
+\begin{tabular}{lcc}
+\hline
+\textbf{Crop} & \textbf{Scientific Name} & \textbf{Peak K\textsubscript{c}} \\
+\hline
+Cash Crop & \textit{Unspecified} & 1.20 \\
+Moringa & \textit{Moringa oleifera} & 1.00 \\
+Corn & \textit{Zea mays} & 1.25 \\
+\hline
+\end{tabular}
+\end{table}
+
+The use of peak crop coefficients (K\textsubscript{c}) reflects the period of maximum water demand during each crop’s growth cycle, typically occurring at full canopy development. By basing irrigation requirements on peak values, the system design accounts for worst-case daily water needs, ensuring the purified water generation infrastructure is adequately sized to meet demand. While growth-stage-specific K\textsubscript{c} curves could improve temporal resolution, using peak values provides a conservative and practical baseline for year-round planning under continuous cropping conditions.
+
+\subsection{Wetted Area Adjustment}
+
+Traditional evapotranspiration models, such as the Penman–Monteith equation, assume a uniformly vegetated and fully wetted surface\cite{karimi2020}, which does not reflect the conditions present in drip irrigation systems. In these systems, water is delivered directly to the root zone, and only a portion of the soil surface is wetted, while the remainder remains dry and contributes minimally to evaporation.
+
+To account for this, we adjust the crop evapotranspiration (ET\textsubscript{c}) using a wetted area fraction, \( f_w \), representing the proportion of soil surface that receives water. The adjusted ET\textsubscript{c} is calculated as:
+
+\[
+ET_c = ET_0 \cdot K_c \cdot f_w
+\]
+
+This approach ensures that the water demand estimates more accurately reflect the spatially constrained moisture distribution created by drip irrigation. In this study, we assign individual \( f_w \) values to each crop based on planting density and drip emitter spread, then calculate a hectare-wide weighted average to determine total daily irrigation demand.
+
+\begin{table}[h]
+\centering
+\caption{Crop \( f_w \) Values}
+\label{tab:fw-results}
+\begin{tabular}{lc}
+\toprule
+\textbf{Crop} & \textbf{\( f_w \)} \\
+\midrule
+Cash Crop & 0.02 \\
+Moringa & 0.08 \\
+Corn & 0.04 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The wetted area fractions (\( f_w \)) for each crop were derived by estimating the surface area wetted by drip emitters relative to the total hectare. For \textit{cash crops} and \textit{Moringa oleifera}, each emitter was assumed to wet a roughly circular area centered around the plant base. The area per plant was calculated using the formula for a circle, \( A_w = \pi r^2 \), where \( r \) represents the radius of emitter spread. This was then scaled by planting density to determine total wetted surface per hectare. In contrast, corn was modeled using a rectangular wetted area along the rows, corresponding to the linear placement of emitters along planting furrows. This rectangular method better reflects the continuous, banded wetting typical in row crops. By applying crop-specific geometric assumptions, the adjusted fractions more accurately capture the localized moisture distribution patterns inherent to drip irrigation systems.
+
+\subsection{C Program Implementation}
+
+To automate the estimation of crop water demand, we developed a lightweight C program that reads historical weather data and calculates daily evapotranspiration using a modified Penman–Monteith approach. Input data—initially stored in CSV format—are converted to a binary format using a custom serialization tool (\texttt{setup.c}) that preserves type fidelity and minimizes disk I/O. This format, known as GBIX, includes an embedded header and typed cell layout to support rapid parsing of large time-series datasets.
+
+The core program (\texttt{main.c}) loads this binary file and reconstructs an \texttt{Environment} struct from the rows. This struct contains hourly meteorological variables such as temperature, relative humidity, wind speed, and atmospheric pressure. These values are used to calculate net radiation and mean daily air temperature, followed by the FAO-56 Penman–Monteith equation to compute reference evapotranspiration (ET\textsubscript{0}).
+
+To obtain actual crop evapotranspiration (ET\textsubscript{c}), the program multiplies ET\textsubscript{0} by a crop coefficient (K\textsubscript{c}) and a wetted area factor (\( f_w \)) appropriate for drip irrigation. Structs representing \textit{cash crops}, \textit{Moringa oleifera}, and corn (\textit{Zea mays}) are defined with parameters including plant density, height, and irrigation-specific constants.
+
+The program then prints ET\textsubscript{c} values to standard output, providing engineers with daily per-hectare water consumption estimates for each species. Memory is allocated dynamically and deallocated before program exit, ensuring minimal resource use and portability to embedded systems. This implementation allows Safina to generate irrigation schedules based on real climate conditions with high temporal fidelity.
+
+\section{Results}
+
+Table~\ref{tab:env-results} presents the key environmental modeling outputs used in calculating crop water demand: net radiation and reference evapotranspiration. These values were obtained using the adapted Penman--Monteith method described in the Methodology section, applied to climate data for Zanzibar.
+
+\begin{table}[h]
+\centering
+\caption{Environmental Model Outputs}
+\label{tab:env-results}
+\begin{tabular}{lc}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+Net Radiation (Rn) & 12.73 MJ/m²/day \\
+Reference ET (ET\textsubscript{0}) & 10.58 mm/day \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:et-results} shows the resulting crop evapotranspiration (ET\textsubscript{c}) values computed using the ET\textsubscript{0} from Table~\ref{tab:env-results}, along with the crop coefficients and wetted area fractions defined earlier. These represent the estimated daily water needs of each crop under drip irrigation.
+
+\begin{table}[h]
+\centering
+\caption{Estimated ET\textsubscript{c} and Volume}
+\label{tab:et-results}
+\begin{tabular}{lcc}
+\hline
+\textbf{Crop} & \textbf{ET\textsubscript{c} (mm/day)} & \textbf{V\textsubscript{c} (L/ha)} \\
+\hline
+Cash Crop & 0.254 & 2,540 \\
+Moringa  & 0.846 & 8,460 \\
+Corn     & 0.529 & 5,290 \\
+\hline
+\textbf{Total} & -- & \textbf{16,390} \\
+\hline
+\end{tabular}
+\end{table}
+
+As shown in Table~\ref{tab:et-results}, the calculated ET\textsubscript{c} values translate into daily water volumes of 2,540 liters for cash crops, 8,560 liters for Moringa, and 5,290 liters for corn per hectare. These figures yield a total daily water requirement of approximately 16,390 liters under peak evapotranspiration conditions. This total provides a critical benchmark for designing and scaling Safina’s water generation and delivery infrastructure, ensuring reliable supply during periods of maximum crop demand.
+
+\section{Discussion}
+These evapotranspiration estimates form a practical basis for aligning irrigation demand with the capabilities of Safina’s purified water generation systems. By applying crop-specific coefficients and correcting for wetted area, the model more accurately reflects the spatial and operational constraints of drip irrigation, particularly in stratified intercrop systems. The integration of a programmatic pipeline allows for scalable, site-specific water modeling using local weather data, which is crucial in tropical environments with high evapotranspiration potential.
+
+Several avenues exist for future improvement. While this study uses peak crop coefficients to ensure conservative estimates, incorporating growth-stage-specific K\textsubscript{c} curves would enhance temporal resolution and avoid overestimation during early or late stages of the crop cycle. Additionally, future versions of the model could integrate soil moisture dynamics, emitter flow rate variability, and feedback from real-time sensors to support adaptive irrigation control. Expanding the scope to account for interspecies shading effects or runoff retention strategies may further refine the water balance estimates in polyculture systems.
+
+\section{Conclusion}
+Adapting the Penman–Monteith equation for drip irrigation through the use of wetted area factors and crop-specific parameters produces a more accurate and actionable estimate of water consumption in complex intercrop systems. This model provides essential input for infrastructure planning and can be updated dynamically using real weather data. By embedding this methodology in a lightweight software toolchain, we enable practical, scalable irrigation design that supports year-round productivity under tropical conditions. The approach is generalizable and can be extended to other climates and crop configurations with minimal modification.
+
+\section{References}
+\begin{thebibliography}{8}
+
+\bibitem{allen1998}
+Allen, R. G., Pereira, L. S., Raes, D., \& Smith, M. (1998).
+\textit{Crop evapotranspiration: Guidelines for computing crop water requirements}.
+FAO Irrigation and Drainage Paper No. 56. Food and Agriculture Organization of the United Nations.
+Available at: \url{https://www.fao.org/4/x0490e/x0490e00.htm}
+
+\bibitem{moringa2017}
+Oliveira, A. D. S., et al. (2017).
+Evapotranspiration and crop coefficients of \textit{Moringa oleifera} under semi-arid conditions in Pernambuco.
+\textit{Revista Brasileira de Engenharia Agrícola e Ambiental}, 21(12), 844–849.
+Available at: \url{https://www.scielo.br/j/rbeaa/a/m9JFLyJfVnjJHrBfzQNy3zr/?lang=en}
+
+\bibitem{maize2023}
+Santos, A. C., et al. (2023).
+Maize (\textit{Zea mays} L.) evapotranspiration and crop coefficient in southern Italy.
+\textit{Italian Journal of Agrometeorology}, 28(1), 35–44.
+Available at: \url{https://riviste.fupress.net/index.php/IJAm/article/download/2777/1972/21024}
+
+\bibitem{karimi2020}
+Karimi, D., et al. (2020).
+Modeling wetted areas of moisture bulb for drip irrigation systems.
+\textit{Computers and Electronics in Agriculture}, 174, 105481.
+Available at: \url{https://www.sciencedirect.com/science/article/abs/pii/S0168169920316124}
+
+\end{thebibliography}
+
+\end{document}
