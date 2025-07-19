@@ -1,0 +1,17 @@
+{
+  "editor.rulers": [
+    88
+  ],
+  "editor.maxTokenizationLineLength": 64000,
+  "editor.formatOnSave": true,
+  "files.associations": {
+    "*.h": "c",
+    "cstdint": "c",
+    "compare": "c",
+    "type_traits": "c"
+  },
+  "C_Cpp.clang_format_sortIncludes": true,
+  "C_Cpp.default.cStandard": "c23",
+  "C_Cpp.default.cppStandard": "c++23",
+  "C_Cpp.default.intelliSenseMode": "linux-gcc-x64"
+}
