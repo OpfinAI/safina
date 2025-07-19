@@ -9,7 +9,6 @@ Safina is a research project for modeling crop water requirements using a modifi
 - `data/` — Example weather data in CSV and GBIX formats.
 - `papers/` — Research paper and documentation in LaTeX.
 - `Makefile` — Build instructions for the project.
-- `main.sh`, `setup.sh` — Convenience scripts to build and run the main simulation or setup.
 
 ## Building
 
@@ -17,20 +16,6 @@ To build the project, run:
 
 ```sh
 make
-```
-
-## Running
-
-To run the setup routine, use:
-
-```sh
-./setup.sh
-```
-
-To run the main simulation, use:
-
-```sh
-./main.sh
 ```
 
 ## License
